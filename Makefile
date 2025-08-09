@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: na-kannan <na-kannan@student.42.fr>        +#+  +:+       +#+         #
+#    By: nkannan <nkannan@student.42tokyo.jp>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2024/08/09 20:00:00 by na-kannan         #+#    #+#              #
-#    Updated: 2024/08/09 20:00:00 by na-kannan        ###   ########.fr        #
+#    Created: 2025/08/09 20:00:00 by nkannan         #+#    #+#              #
+#    Updated: 2025/08/09 22:27:31 by nkannan          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,7 +16,8 @@ NAME = inception
 SRCS_PATH = ./srcs
 DOCKER_COMPOSE = docker compose
 DOCKER_COMPOSE_FILE = $(SRCS_PATH)/docker-compose.yml
-DATA_PATH = /home/$(USER)/data
+
+DATA_PATH = ./data
 
 # Colors
 GREEN = \033[0;32m
@@ -56,9 +57,9 @@ clean: down
 
 fclean: clean
 	@echo "$(RED)Removing all Docker data...$(NC)"
+	@if [ -d "$(DATA_PATH)/wordpress" ]; then sudo rm -rf $(DATA_PATH)/wordpress; fi
+	@if [ -d "$(DATA_PATH)/mariadb" ]; then sudo rm -rf $(DATA_PATH)/mariadb; fi
 	@docker system prune -af --volumes
-	@sudo rm -rf $(DATA_PATH)/wordpress
-	@sudo rm -rf $(DATA_PATH)/mariadb
 	@echo "$(GREEN)Cleanup complete!$(NC)"
 
 re: fclean all
