@@ -1,0 +1,22 @@
+# Environment files
+srcs/.env
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Logs
+*.log
