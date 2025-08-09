@@ -1,6 +1,66 @@
 [mysqld]
+# Basic Settings
 datadir = /var/lib/mysql
 socket = /var/run/mysqld/mysqld.sock
-bind-address = 0.0.0.0
+pid-file = /var/run/mysqld/mysqld.pid
 port = 3306
 user = mysql
+
+# Network Settings
+# Allow connections from any host (required for Docker networking)
+bind-address = 0.0.0.0
+skip-networking = false
+
+# Character Set and Collation
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Performance Settings
+max_connections = 100
+max_allowed_packet = 64M
+thread_cache_size = 8
+sort_buffer_size = 2M
+read_buffer_size = 2M
+read_rnd_buffer_size = 8M
+join_buffer_size = 2M
+key_buffer_size = 128M
+
+# InnoDB Settings
+innodb_file_per_table = 1
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+innodb_lock_wait_timeout = 50
+
+# Query Cache (disabled by default in newer versions)
+query_cache_size = 0
+query_cache_type = 0
+
+# Slow Query Log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Error Log
+log_error = /var/log/mysql/error.log
+
+# Binary Log (for replication, can be disabled if not needed)
+# log_bin = /var/log/mysql/mysql-bin.log
+# expire_logs_days = 10
+# max_binlog_size = 100M
+
+# Security Settings
+# Disable symbolic links
+symbolic-links = 0
+# Skip reverse DNS lookup of clients
+skip-name-resolve = 1
+# Disable LOAD DATA LOCAL
+local_infile = 0
+
+[client]
+default-character-set = utf8mb4
+socket = /var/run/mysqld/mysqld.sock
+
+[mysql]
+default-character-set = utf8mb4

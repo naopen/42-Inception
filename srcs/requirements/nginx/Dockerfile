@@ -11,20 +11,24 @@ COPY conf/nginx.conf /etc/nginx/nginx.conf
 COPY conf/default.conf /etc/nginx/sites-available/default
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Copy SSL certificate generation script
+# Copy scripts
 COPY tools/generate_ssl.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/generate_ssl.sh
+COPY tools/nginx_entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/generate_ssl.sh /usr/local/bin/nginx_entrypoint.sh
 
 # Create necessary directories
 RUN mkdir -p /etc/nginx/ssl && \
     mkdir -p /var/www/wordpress && \
     chown -R www-data:www-data /var/www/wordpress
 
-# Generate SSL certificate
-RUN /usr/local/bin/generate_ssl.sh
+# Remove default NGINX site
+RUN rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-# Expose HTTPS port only
+# Create the symbolic link for our configuration
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+# Expose HTTPS port only (requirement: only port 443)
 EXPOSE 443
 
-# Start NGINX in foreground
-CMD ["nginx", "-g", "daemon off;"]
+# Use entrypoint script
+ENTRYPOINT ["/usr/local/bin/nginx_entrypoint.sh"]
