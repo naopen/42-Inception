@@ -184,6 +184,14 @@ check:
 	@echo "$(GREEN)   Check Complete$(NC)"
 	@echo "$(GREEN)========================================$(NC)"
 
+# Setup hosts file
+hosts:
+	@bash setup_hosts.sh
+
+# Troubleshooting
+troubleshoot:
+	@bash troubleshoot.sh
+
 # Help target
 help:
 	@echo "$(BLUE)========================================$(NC)"
@@ -217,4 +225,4 @@ help:
 
 .PHONY: all up down stop start restart build logs ps clean fclean re \
         create_dirs check_env info check help shell-nginx shell-wordpress \
-        shell-mariadb db wp
+        shell-mariadb db wp hosts troubleshoot

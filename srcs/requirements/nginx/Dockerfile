@@ -6,26 +6,26 @@ RUN apt-get update && apt-get install -y \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy NGINX configuration
+# Copy NGINX base configuration
 COPY conf/nginx.conf /etc/nginx/nginx.conf
-COPY conf/default.conf /etc/nginx/sites-available/default
-RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Copy scripts
-COPY tools/generate_ssl.sh /usr/local/bin/
+# Copy entrypoint script
 COPY tools/nginx_entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/generate_ssl.sh /usr/local/bin/nginx_entrypoint.sh
+RUN chmod +x /usr/local/bin/nginx_entrypoint.sh
 
 # Create necessary directories
 RUN mkdir -p /etc/nginx/ssl && \
     mkdir -p /var/www/wordpress && \
+    mkdir -p /var/log/nginx && \
+    mkdir -p /run/nginx && \
     chown -R www-data:www-data /var/www/wordpress
 
-# Remove default NGINX site
-RUN rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+# Remove default NGINX configurations
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    rm -f /etc/nginx/sites-available/default
 
-# Create the symbolic link for our configuration
-RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+# Create symbolic link for our configuration (will be created by entrypoint)
+RUN mkdir -p /etc/nginx/sites-enabled
 
 # Expose HTTPS port only (requirement: only port 443)
 EXPOSE 443
