@@ -33,7 +33,8 @@ RUN chmod +x /usr/local/bin/wp_setup.sh
 # Create necessary directories
 RUN mkdir -p /var/www/wordpress && \
     chown -R www-data:www-data /var/www/wordpress && \
-    mkdir -p /run/php
+    mkdir -p /run/php && \
+    chown www-data:www-data /run/php
 
 # Set working directory
 WORKDIR /var/www/wordpress
@@ -41,8 +42,5 @@ WORKDIR /var/www/wordpress
 # Expose PHP-FPM port
 EXPOSE 9000
 
-# Run the setup script
+# Use the setup script as entrypoint
 ENTRYPOINT ["/usr/local/bin/wp_setup.sh"]
-
-# Start PHP-FPM
-CMD ["php-fpm7.4", "-F"]
