@@ -35,6 +35,8 @@ if [ ! -f /etc/nginx/ssl/inception.crt ] || [ ! -f /etc/nginx/ssl/inception.key 
     chmod 600 /etc/nginx/ssl/inception.key
     chmod 644 /etc/nginx/ssl/inception.crt
     log "SSL certificate generated successfully!"
+else
+    log "SSL certificate already exists"
 fi
 
 # Create NGINX configuration from template
@@ -42,26 +44,20 @@ log "Configuring NGINX..."
 cat > /etc/nginx/sites-available/default << EOF
 server {
     # Listen only on port 443 with SSL (requirement)
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
     
-    server_name ${DOMAIN_NAME} localhost;
+    server_name ${DOMAIN_NAME} localhost _;
     
     # SSL/TLS Configuration (TLSv1.2 or TLSv1.3 only as required)
     ssl_certificate /etc/nginx/ssl/inception.crt;
     ssl_certificate_key /etc/nginx/ssl/inception.key;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
     ssl_session_tickets off;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=63072000" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
     
     # Root directory for WordPress
     root /var/www/wordpress;
@@ -69,7 +65,7 @@ server {
     
     # Logging
     access_log /var/log/nginx/wordpress_access.log;
-    error_log /var/log/nginx/wordpress_error.log;
+    error_log /var/log/nginx/wordpress_error.log debug;
     
     # Client body size (for file uploads)
     client_max_body_size 64M;
@@ -95,7 +91,6 @@ server {
         fastcgi_buffer_size 128k;
         fastcgi_buffers 4 256k;
         fastcgi_busy_buffers_size 256k;
-        fastcgi_temp_file_write_size 256k;
         fastcgi_read_timeout 300;
     }
     
@@ -117,56 +112,50 @@ server {
         access_log off;
         log_not_found off;
     }
-    
-    # Deny access to wp-config.php
-    location ~* /wp-config.php {
-        deny all;
-    }
-    
-    # Deny access to XML-RPC
-    location = /xmlrpc.php {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Allow only internal access to WordPress installation scripts
-    location ~* ^/wp-admin/(install|setup-config)\.php\$ {
-        deny all;
-    }
-    
-    # Cache static files
-    location ~* \.(jpg|jpeg|gif|png|css|js|ico|webp|svg|woff|woff2|ttf|eot)\$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-    
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/rss+xml application/atom+xml image/svg+xml text/javascript application/vnd.ms-fontobject application/x-font-ttf font/opentype;
 }
 
 # Explicitly deny all traffic on port 80 (HTTP)
 server {
-    listen 80;
-    listen [::]:80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name _;
     return 444; # Close connection without response
 }
 EOF
 
+# Create symbolic link to enable the site
+log "Enabling site configuration..."
+ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Remove any other default configurations
+rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
+
 # Test NGINX configuration
 log "Testing NGINX configuration..."
-nginx -t
+nginx -t 2>&1
 
 if [ $? -ne 0 ]; then
     error "NGINX configuration test failed!"
 fi
 
-# Start NGINX
-log "Starting NGINX..."
+# Create an index.html for testing
+if [ ! -f /var/www/wordpress/index.html ]; then
+    cat > /var/www/wordpress/index.html << 'HTML'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inception - 42 Project</title>
+</head>
+<body>
+    <h1>NGINX is working!</h1>
+    <p>If you see this page, NGINX is properly configured.</p>
+    <p>WordPress installation is in progress...</p>
+</body>
+</html>
+HTML
+    chown www-data:www-data /var/www/wordpress/index.html
+fi
+
+# Start NGINX in foreground
+log "Starting NGINX in foreground..."
 exec nginx -g "daemon off;"

@@ -1,9 +1,11 @@
 FROM debian:bullseye
 
-# Install NGINX and OpenSSL
+# Install NGINX, OpenSSL and debugging tools
 RUN apt-get update && apt-get install -y \
     nginx \
     openssl \
+    procps \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy NGINX base configuration
@@ -18,14 +20,14 @@ RUN mkdir -p /etc/nginx/ssl && \
     mkdir -p /var/www/wordpress && \
     mkdir -p /var/log/nginx && \
     mkdir -p /run/nginx && \
+    mkdir -p /etc/nginx/sites-available && \
+    mkdir -p /etc/nginx/sites-enabled && \
     chown -R www-data:www-data /var/www/wordpress
 
-# Remove default NGINX configurations
-RUN rm -f /etc/nginx/sites-enabled/default && \
-    rm -f /etc/nginx/sites-available/default
-
-# Create symbolic link for our configuration (will be created by entrypoint)
-RUN mkdir -p /etc/nginx/sites-enabled
+# Remove any default configurations
+RUN rm -f /etc/nginx/sites-enabled/* && \
+    rm -f /etc/nginx/sites-available/* && \
+    rm -f /etc/nginx/conf.d/*
 
 # Expose HTTPS port only (requirement: only port 443)
 EXPOSE 443
