@@ -25,6 +25,40 @@ test_db_connection() {
     return $?
 }
 
+# Function to test and debug database connection
+debug_db_connection() {
+    local host="${WP_DB_HOST%%:*}"
+    local port="${WP_DB_HOST##*:}"
+    
+    log "Testing database connection to ${host}:${port}..."
+    
+    # Try connection with verbose error output
+    mysql -h"${host}" -P"${port}" -u"${WP_DB_USER}" -p"${WP_DB_PASSWORD}" -e "SELECT 1;" 2>&1 | head -5
+    
+    if [ $? -ne 0 ]; then
+        error "Failed to connect to database"
+        
+        # Try to get more info
+        log "Checking if MariaDB host is reachable..."
+        if command -v ping >/dev/null 2>&1; then
+            ping -c 1 "${host}" 2>&1 | head -3
+        fi
+        
+        if command -v nc >/dev/null 2>&1; then
+            nc -zv "${host}" "${port}" 2>&1
+        fi
+        
+        # Try connecting without password to see different error
+        log "Testing connection without credentials..."
+        mysql -h"${host}" -P"${port}" -u"${WP_DB_USER}" -e "SELECT 1;" 2>&1 | head -3
+        
+        return 1
+    fi
+    
+    log "Database connection successful!"
+    return 0
+}
+
 # Function to ensure PHP-FPM starts even if setup fails
 start_php_fpm() {
     log "Ensuring PHP-FPM directory exists..."
