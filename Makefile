@@ -186,11 +186,23 @@ check:
 
 # Setup hosts file
 hosts:
-	@bash setup_hosts.sh
+	@bash $(SRCS_PATH)/requirements/tools/setup_hosts.sh
 
 # Troubleshooting
 troubleshoot:
-	@bash troubleshoot.sh
+	@bash $(SRCS_PATH)/requirements/tools/troubleshoot.sh
+
+# Debug tool
+debug:
+	@bash $(SRCS_PATH)/requirements/tools/debug.sh
+
+# Cleanup tool
+cleanup:
+	@bash $(SRCS_PATH)/requirements/tools/cleanup.sh
+
+# Evaluation check
+eval-check:
+	@bash $(SRCS_PATH)/requirements/tools/evaluation_check.sh
 
 # Help target
 help:
@@ -225,4 +237,4 @@ help:
 
 .PHONY: all up down stop start restart build logs ps clean fclean re \
         create_dirs check_env info check help shell-nginx shell-wordpress \
-        shell-mariadb db wp hosts troubleshoot
+        shell-mariadb db wp hosts troubleshoot debug cleanup eval-check
