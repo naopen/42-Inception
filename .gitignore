@@ -1,4 +1,5 @@
 data/
+secrets/
 
 # Environment files
 srcs/.env
