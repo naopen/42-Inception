@@ -1,110 +1,83 @@
 #!/bin/bash
 
-# Error handling - do not exit on error for initialization
-set +e
+# Exit on error
+set -e
 
-# Simple initialization for MariaDB
-echo "[MariaDB] Starting initialization..."
+echo "[MariaDB] Starting MariaDB initialization script..."
 
-# Debug information
-echo "[MariaDB] Checking /var/lib/mysql directory..."
-ls -la /var/lib/mysql/
+# Ensure mysql user owns the data directory
+chown -R mysql:mysql /var/lib/mysql
 
-# Check if database is already initialized
-if [ ! -d "/var/lib/mysql/mysql" ]; then
-    echo "[MariaDB] First run - initializing database..."
+# Check if our specific database exists (not just mysql system db)
+DB_EXISTS=$(mysql -u root -e "SHOW DATABASES LIKE '${MYSQL_DATABASE}';" 2>/dev/null | grep "${MYSQL_DATABASE}" || echo "")
+
+if [ -z "$DB_EXISTS" ]; then
+    echo "[MariaDB] Database '${MYSQL_DATABASE}' not found. Initializing..."
     
-    # Initialize database
-    mysql_install_db --user=mysql --datadir=/var/lib/mysql
+    # If mysql directory doesn't exist, initialize it
+    if [ ! -d "/var/lib/mysql/mysql" ]; then
+        echo "[MariaDB] Initializing MariaDB data directory..."
+        mysql_install_db --user=mysql --datadir=/var/lib/mysql --auth-root-authentication-method=normal
+    fi
     
-    # Start MariaDB in background with skip-networking to prevent external connections during setup
-    mysqld --user=mysql --skip-networking &
-    pid="$!"
+    # Start temporary MariaDB server
+    echo "[MariaDB] Starting temporary MariaDB server..."
+    mysqld_safe --user=mysql --skip-networking &
+    MYSQL_PID=$!
     
     # Wait for MariaDB to be ready
     echo "[MariaDB] Waiting for MariaDB to start..."
     for i in {1..30}; do
-        if mysql -u root -e "SELECT 1" > /dev/null 2>&1; then
-            echo "[MariaDB] MariaDB is ready for initialization"
+        if mysqladmin ping >/dev/null 2>&1; then
+            echo "[MariaDB] MariaDB is ready"
             break
         fi
         sleep 1
     done
     
-    # Set up database and user using environment variables
-    echo "[MariaDB] Creating database '${MYSQL_DATABASE}' and user '${MYSQL_USER}'..."
-    mysql -u root << EOF
+    # Configure database
+    echo "[MariaDB] Configuring database..."
+    mysql << EOF
 -- Set root password
-FLUSH PRIVILEGES;
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
 
 -- Create database
 CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
 
--- Remove any existing user with same name
+-- Remove existing users if any
 DROP USER IF EXISTS '${MYSQL_USER}'@'%';
 DROP USER IF EXISTS '${MYSQL_USER}'@'localhost';
 
 -- Create user and grant privileges
 CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-CREATE USER '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}';
-
--- Grant all privileges on the database
 GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
-GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'localhost';
 
--- Ensure the user can connect from any host
-GRANT USAGE ON *.* TO '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+-- Allow root from any host
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
 
+-- Flush privileges
 FLUSH PRIVILEGES;
 EOF
     
-    if [ $? -eq 0 ]; then
-        echo "[MariaDB] Database and user created successfully"
-    else
-        echo "[MariaDB] Warning: There was an issue creating database or user"
-    fi
+    # Shutdown temporary server
+    echo "[MariaDB] Shutting down temporary server..."
+    mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown
+    wait $MYSQL_PID
     
-    # Stop temporary instance
-    echo "[MariaDB] Stopping temporary MariaDB instance..."
-    kill "$pid"
-    wait "$pid" 2>/dev/null
-    
-    echo "[MariaDB] Initialization complete!"
+    echo "[MariaDB] Database initialization complete!"
 else
-    echo "[MariaDB] Database already initialized."
-    
-    # Ensure user permissions are correct even on restart
-    echo "[MariaDB] Verifying user permissions..."
-    
-    # Start MariaDB in background temporarily to fix permissions
-    mysqld --user=mysql --skip-networking &
-    pid="$!"
-    
-    # Wait for MariaDB to be ready
-    for i in {1..30}; do
-        if mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1" > /dev/null 2>&1; then
-            break
-        fi
-        sleep 1
-    done
-    
-    # Re-grant permissions to ensure connectivity
-    mysql -u root -p"${MYSQL_ROOT_PASSWORD}" << EOF 2>/dev/null || true
--- Ensure user exists and has proper permissions
-CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
-FLUSH PRIVILEGES;
-EOF
-    
-    # Stop temporary instance
-    kill "$pid" 2>/dev/null
-    wait "$pid" 2>/dev/null
+    echo "[MariaDB] Database '${MYSQL_DATABASE}' already exists."
 fi
 
-# Set permissions
+# Ensure correct permissions
 chown -R mysql:mysql /var/lib/mysql
+chmod 755 /var/lib/mysql
 
-# Start MariaDB normally
+# Create run directory for socket
+mkdir -p /var/run/mysqld
+chown mysql:mysql /var/run/mysqld
+chmod 755 /var/run/mysqld
+
 echo "[MariaDB] Starting MariaDB server..."
+# Start MariaDB server
 exec mysqld --user=mysql --bind-address=0.0.0.0

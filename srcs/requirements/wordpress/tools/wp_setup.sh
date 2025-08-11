@@ -21,7 +21,7 @@ warning() {
 
 # Function to test database connection
 test_db_connection() {
-    mysql -h"${WP_DB_HOST%%:*}" -P"${WP_DB_HOST##*:}" -u"${WP_DB_USER}" -p"${WP_DB_PASSWORD}" -e "SELECT 1;" 2>/dev/null
+    mysql --protocol=tcp -h "${WP_DB_HOST%%:*}" -P "${WP_DB_HOST##*:}" -u "${WP_DB_USER}" -p"${WP_DB_PASSWORD}" "${WP_DB_NAME}" -e "SELECT 1;" 2>/dev/null
     return $?
 }
 
@@ -162,7 +162,7 @@ if [ ! -f /var/www/wordpress/wp-config.php ]; then
         --dbname="${WP_DB_NAME}" \
         --dbuser="${WP_DB_USER}" \
         --dbpass="${WP_DB_PASSWORD}" \
-        --dbhost="${WP_DB_HOST}" \
+        --dbhost="${WP_DB_HOST%%:*}" \
         --dbcharset="utf8mb4" \
         --dbcollate="" \
         --locale=en_US \
