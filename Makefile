@@ -188,10 +188,6 @@ troubleshoot:
 debug:
 	@bash $(SRCS_PATH)/requirements/tools/debug.sh
 
-# Evaluation check
-eval-check:
-	@bash $(SRCS_PATH)/requirements/tools/evaluation_check.sh
-
 # Help target
 help:
 	@echo "$(BLUE)========================================$(NC)"
@@ -225,4 +221,4 @@ help:
 
 .PHONY: all up down stop start restart build logs ps clean fclean re \
         create_dirs check_env info check help shell-nginx shell-wordpress \
-        shell-mariadb db wp hosts troubleshoot debug eval-check
+        shell-mariadb db wp hosts troubleshoot debug
