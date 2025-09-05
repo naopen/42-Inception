@@ -34,11 +34,11 @@ NC = \033[0m
 all: up
 
 # Build and start all services
-up: check_env create_dirs
+up: check_env
 	@echo "$(GREEN)========================================$(NC)"
 	@echo "$(GREEN)   Starting Inception Project$(NC)"
 	@echo "$(GREEN)========================================$(NC)"
-	@echo "$(CYAN)Creating data directories...$(NC)"
+	@echo "$(CYAN)Using Docker named volumes for data persistence...$(NC)"
 	@echo "$(CYAN)Building Docker images...$(NC)"
 	@$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) build
 	@echo "$(CYAN)Starting containers...$(NC)"
@@ -98,27 +98,19 @@ fclean: clean
 	@echo "$(RED)   Complete Cleanup$(NC)"
 	@echo "$(RED)========================================$(NC)"
 	@echo "$(RED)Removing all Docker data...$(NC)"
-	@docker stop $$(docker ps -qa) 2>/dev/null || true
-	@docker rm $$(docker ps -qa) 2>/dev/null || true
-	@docker rmi -f $$(docker images -qa) 2>/dev/null || true
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-	@docker network rm $$(docker network ls -q) 2>/dev/null || true
-	@echo "$(RED)Removing data directories...$(NC)"
-	@if [ -d "$(DATA_PATH)" ]; then \
-		echo "$(YELLOW)Removing $(DATA_PATH)...$(NC)"; \
-		sudo rm -rf $(DATA_PATH); \
-	fi
-	@echo "$(GREEN)Cleanup complete!$(NC)"
+	@docker stop $(docker ps -qa) 2>/dev/null || true
+	@docker rm $(docker ps -qa) 2>/dev/null || true
+	@docker rmi -f $(docker images -qa) 2>/dev/null || true
+	@docker volume rm $(docker volume ls -q) 2>/dev/null || true
+	@docker network rm $(docker network ls -q) 2>/dev/null || true
+	@echo "$(GREEN)Cleanup complete! Named volumes removed.$(NC)"
 
 # Rebuild everything from scratch
 re: fclean all
 
-# Create necessary directories
+# Create necessary directories (not needed with named volumes)
 create_dirs:
-	@echo "$(CYAN)Creating data directories...$(NC)"
-	@mkdir -p $(DATA_PATH)/wordpress
-	@mkdir -p $(DATA_PATH)/mariadb
-	@echo "$(GREEN)Data directories ready at: $(DATA_PATH)$(NC)"
+	@echo "$(CYAN)Using Docker named volumes - no directory creation needed$(NC)"
 
 # Check environment configuration
 check_env:
@@ -135,7 +127,7 @@ info:
 	@echo "$(BLUE)   Inception Configuration$(NC)"
 	@echo "$(BLUE)========================================$(NC)"
 	@echo "$(CYAN)Domain:$(NC) $(DOMAIN_NAME)"
-	@echo "$(CYAN)Data Path:$(NC) $(DATA_PATH)"
+	@echo "$(CYAN)Storage:$(NC) Docker named volumes"
 	@echo "$(CYAN)WordPress Admin:$(NC) $(WP_ADMIN_USER)"
 	@echo "$(CYAN)Database:$(NC) $(MYSQL_DATABASE)"
 	@echo "$(BLUE)========================================$(NC)"

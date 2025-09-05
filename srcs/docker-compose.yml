@@ -38,6 +38,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - mariadb_data:/var/lib/mysql
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
     networks:
       - inception_network
     env_file:
@@ -47,17 +49,9 @@ services:
 volumes:
   wordpress_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_PATH}/wordpress
 
   mariadb_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_PATH}/mariadb
 
 networks:
   inception_network:
