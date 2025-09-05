@@ -28,10 +28,18 @@ if [ -z "$DB_EXISTS" ]; then
     # Wait for MariaDB to be ready
     echo "[MariaDB] Waiting for MariaDB to start..."
     for i in {1..30}; do
-        if mysqladmin ping >/dev/null 2>&1; then
+        if mysqladmin ping -S /tmp/mysql.sock >/dev/null 2>&1; then
             echo "[MariaDB] MariaDB is ready"
             break
+        elif [ $i -eq 30 ]; then
+            echo "[MariaDB] Failed to start MariaDB after 30 seconds"
+            echo "[MariaDB] Checking logs..."
+            if [ -f /var/log/mysql/error.log ]; then
+                tail -20 /var/log/mysql/error.log
+            fi
+            exit 1
         fi
+        echo "[MariaDB] Attempt $i/30: waiting for MariaDB..."
         sleep 1
     done
     
@@ -73,10 +81,13 @@ fi
 chown -R mysql:mysql /var/lib/mysql
 chmod 755 /var/lib/mysql
 
-# Create run directory for socket
-mkdir -p /var/run/mysqld
-chown mysql:mysql /var/run/mysqld
-chmod 755 /var/run/mysqld
+# Create socket and pid files in /tmp (for Virtual Box compatibility)
+mkdir -p /tmp
+chown mysql:mysql /tmp
+chmod 755 /tmp
+
+# Remove any existing socket files
+rm -f /tmp/mysql.sock /tmp/mysqld.pid
 
 echo "[MariaDB] Starting MariaDB server..."
 # Start MariaDB server

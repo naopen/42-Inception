@@ -1,8 +1,8 @@
 [mysqld]
 # Basic Settings
 datadir = /var/lib/mysql
-socket = /var/run/mysqld/mysqld.sock
-pid-file = /var/run/mysqld/mysqld.pid
+socket = /tmp/mysql.sock
+pid-file = /tmp/mysqld.pid
 port = 3306
 user = mysql
 
@@ -60,7 +60,7 @@ local_infile = 0
 
 [client]
 default-character-set = utf8mb4
-socket = /var/run/mysqld/mysqld.sock
+socket = /tmp/mysql.sock
 
 [mysql]
 default-character-set = utf8mb4
