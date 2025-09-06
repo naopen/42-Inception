@@ -17,6 +17,23 @@ SRCS_PATH = ./srcs
 DOCKER_COMPOSE = docker compose
 DOCKER_COMPOSE_FILE = $(SRCS_PATH)/docker-compose.yml
 
+# OS Detection
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    DATA_PATH = /home/$(USER)/data
+    OS_TYPE = Linux
+else ifeq ($(UNAME_S),Darwin)
+    DATA_PATH = $(HOME)/data
+    OS_TYPE = macOS
+else
+    DATA_PATH = /home/$(USER)/data
+    OS_TYPE = Unknown
+endif
+
+# Export the data path for docker-compose
+export DATA_PATH
+export OS_TYPE
+
 # Load environment variables from .env file
 include $(SRCS_PATH)/.env
 export
@@ -34,11 +51,11 @@ NC = \033[0m
 all: up
 
 # Build and start all services
-up: check_env
+up: check_env create_dirs
 	@echo "$(GREEN)========================================$(NC)"
 	@echo "$(GREEN)   Starting Inception Project$(NC)"
 	@echo "$(GREEN)========================================$(NC)"
-	@echo "$(CYAN)Using Docker named volumes for data persistence...$(NC)"
+	@echo "$(CYAN)Using bind mount volumes at $(DATA_PATH)...$(NC)"
 	@echo "$(CYAN)Building Docker images...$(NC)"
 	@$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) build
 	@echo "$(CYAN)Starting containers...$(NC)"
@@ -103,14 +120,24 @@ fclean: clean
 	@docker rmi -f $(docker images -qa) 2>/dev/null || true
 	@docker volume rm $(docker volume ls -q) 2>/dev/null || true
 	@docker network rm $(docker network ls -q) 2>/dev/null || true
-	@echo "$(GREEN)Cleanup complete! Named volumes removed.$(NC)"
+	@echo "$(YELLOW)Removing data directories at $(DATA_PATH)...$(NC)"
+	@rm -rf $(DATA_PATH)/wordpress 2>/dev/null || true
+	@rm -rf $(DATA_PATH)/mariadb 2>/dev/null || true
+	@echo "$(GREEN)Cleanup complete! Data directories removed.$(NC)"
 
 # Rebuild everything from scratch
 re: fclean all
 
-# Create necessary directories (not needed with named volumes)
+# Create necessary directories for bind mount volumes
 create_dirs:
-	@echo "$(CYAN)Using Docker named volumes - no directory creation needed$(NC)"
+	@echo "$(CYAN)Detected OS: $(OS_TYPE)$(NC)"
+	@echo "$(CYAN)Creating data directories at $(DATA_PATH)...$(NC)"
+	@mkdir -p $(DATA_PATH)/wordpress
+	@mkdir -p $(DATA_PATH)/mariadb
+	@chmod 755 $(DATA_PATH)
+	@chmod 755 $(DATA_PATH)/wordpress
+	@chmod 755 $(DATA_PATH)/mariadb
+	@echo "$(GREEN)Data directories created at $(DATA_PATH)$(NC)"
 
 # Check environment configuration
 check_env:
@@ -126,8 +153,12 @@ info:
 	@echo "$(BLUE)========================================$(NC)"
 	@echo "$(BLUE)   Inception Configuration$(NC)"
 	@echo "$(BLUE)========================================$(NC)"
+	@echo "$(CYAN)Operating System:$(NC) $(OS_TYPE)"
+	@echo "$(CYAN)User:$(NC) $(USER)"
 	@echo "$(CYAN)Domain:$(NC) $(DOMAIN_NAME)"
-	@echo "$(CYAN)Storage:$(NC) Docker named volumes"
+	@echo "$(CYAN)Data Storage:$(NC) $(DATA_PATH)"
+	@echo "$(CYAN)  ├─ WordPress:$(NC) $(DATA_PATH)/wordpress"
+	@echo "$(CYAN)  └─ MariaDB:$(NC) $(DATA_PATH)/mariadb"
 	@echo "$(CYAN)WordPress Admin:$(NC) $(WP_ADMIN_USER)"
 	@echo "$(CYAN)Database:$(NC) $(MYSQL_DATABASE)"
 	@echo "$(BLUE)========================================$(NC)"
@@ -160,6 +191,8 @@ check:
 	@echo "$(CYAN)Checking volumes...$(NC)"
 	@docker volume ls | grep wordpress || echo "$(RED)WordPress volume not found!$(NC)"
 	@docker volume ls | grep mariadb || echo "$(RED)MariaDB volume not found!$(NC)"
+	@echo "$(CYAN)Checking data directories...$(NC)"
+	@ls -la $(DATA_PATH) 2>/dev/null || echo "$(YELLOW)Data directory not found at $(DATA_PATH)$(NC)"
 	@echo "$(CYAN)Checking containers...$(NC)"
 	@docker ps | grep nginx || echo "$(RED)NGINX container not running!$(NC)"
 	@docker ps | grep wordpress || echo "$(RED)WordPress container not running!$(NC)"
