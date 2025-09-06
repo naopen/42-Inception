@@ -1,1 +1,0 @@
-FROM adminer:5.3.0
